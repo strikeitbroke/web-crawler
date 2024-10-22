@@ -1,3 +1,5 @@
+import boto3
+import uuid
 import json
 import requests
 from dataclasses import dataclass
@@ -16,39 +18,56 @@ class LinkInfo:
 
 
 
-def get_links():
+def push_to_db():
+    curr_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ROOT_URL = "https://crawler-test.com/"
-    r = requests.get(ROOT_URL)
+    run_id = curr_time + "#" + str(uuid.uuid4())
 
-    soup = bs(r.content, 'html5lib')
+    dynamodb = boto3.resource("dynamodb")
+    table_name = "web-crawler"
+    table = dynamodb.Table(table_name)
 
-    links = []
-    for link in soup.find_all('a', href=True):
-        curr_time = datetime.now()
-        full_url = urljoin(ROOT_URL, link['href'])
-        save_url = full_url
-        run_id = "hello"
-        date = curr_time.strftime("%Y-%m-%d %H:%M:%S")
-        referring_url = ROOT_URL
-        root_url = ROOT_URL
+    table.put_item(
+        Item={
+            "visited_url": ROOT_URL,
+            "run_id": run_id,
+            "date": curr_time,
+            "referring_url": None,
+            "root_url": ROOT_URL
+        }
+    )
 
-        links.append(LinkInfo(save_url, run_id, date, referring_url, root_url))
-        break
-
-    return links
+    
+    # r = requests.get(ROOT_URL)
+    #
+    # soup = bs(r.content, 'html5lib')
+    #
+    # links = []
+    # for link in soup.find_all('a', href=True):
+    #     curr_time = datetime.now()
+    #     full_url = urljoin(ROOT_URL, link['href'])
+    #     save_url = full_url
+    #     run_id = "hello"
+    #     date = curr_time.strftime("%Y-%m-%d %H:%M:%S")
+    #     referring_url = ROOT_URL
+    #     root_url = ROOT_URL
+    #
+    #     links.append(LinkInfo(save_url, run_id, date, referring_url, root_url))
+    #     break
+    #
+    # return links
 
 
 def lambda_handler(event, context):
-    # TODO implement
-    links = get_links()
-    data =[]
-    for link in links:
-        data.append([link.save_url, link.run_id, link.date, link.referring_url, link.root_url])
+    push_to_db()
 
     return {
         'statusCode': 200,
-        'body': json.dumps(data)
+        'body': json.dumps("success")
     }
 
-print(lambda_handler("", ""))
+
+
+if __name__ == "__main__":
+    lambda_handler("", "")
 
