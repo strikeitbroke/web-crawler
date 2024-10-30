@@ -17,6 +17,13 @@ class LinkInfo:
     root_url: str
 
 
+def push_to_queue(msg):
+    sqs = boto3.resource('sqs')
+    queue = sqs.get_queue_by_name(QueueName="web-crawler-queue")
+    res = queue.send_message(MessageBody=json.dumps(msg))
+    return res
+
+
 
 def push_to_db():
     curr_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -26,16 +33,18 @@ def push_to_db():
     dynamodb = boto3.resource("dynamodb")
     table_name = "web-crawler"
     table = dynamodb.Table(table_name)
-
-    table.put_item(
-        Item={
+    item = {
             "visited_url": ROOT_URL,
             "run_id": run_id,
             "date": curr_time,
             "referring_url": None,
             "root_url": ROOT_URL
         }
+    table.put_item(
+        Item=item
     )
+
+    push_to_queue(item)
 
     
     # r = requests.get(ROOT_URL)
